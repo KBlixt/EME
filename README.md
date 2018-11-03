@@ -1,0 +1,2 @@
+# EME
+Emby metadata editor
