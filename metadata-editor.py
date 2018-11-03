@@ -277,7 +277,7 @@ def handle_movie():
         try:
             file.write(nfo)
         except UnicodeEncodeError as e:
-            print('something went wrong! (1):')
+            print('something went wrong! (1)')
             done = False
 
     if not done:
