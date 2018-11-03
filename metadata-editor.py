@@ -154,6 +154,7 @@ def handle_movie():
         if '<imdbid>' in line:
             imdb_id = line.replace('<imdbid>', '').replace('</imdbid>', '').strip()
             break
+    locked_fields = ""
     for line in nfo:
         if '<lockedfields>' in line:
             locked_fields = line.replace('<lockedfields>', '').replace('</lockedfields>', '').strip()
