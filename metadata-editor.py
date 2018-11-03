@@ -251,8 +251,6 @@ def handle_movie():
             if 'Title' not in locked_fields:
                 locked_fields += '|Title'
 
-
-
     count = 0
     for line in nfo:
         if '<lockedfields>' in line:
@@ -283,5 +281,7 @@ else:
     for movie in os.listdir(args.library):
         movie_directory = os.path.join(args.library, movie)
         handle_movie()
+        main_tmdb_details = None
+        sec_tmdb_details = None
 
 sys.exit()
