@@ -137,11 +137,15 @@ def handle_movie():
     nfo_string = None
     for filename in glob.glob(os.path.join(movie_directory, '*.nfo')):
         with codecs.open(filename, 'r', 'utf-8') as file:
-            nfo_string = file.read()
+            try:
+                nfo_string = file.read()
+            except UnicodeDecodeError as e:
+                print('something went wrong! (1):')
+                return False
         nfo_path = filename
 
     if not nfo_string:
-        print('something went wrong! (123)')
+        print('something went wrong! (2)')
         return False
 
     nfo = nfo_string.split('\n')
@@ -268,9 +272,19 @@ def handle_movie():
             count += 1
 
     nfo = '\n'.join(nfo)
-
+    done = True
     with codecs.open(nfo_path, 'w', 'utf-8') as file:
-        file.write(nfo)
+        try:
+            file.write(nfo)
+        except UnicodeEncodeError as e:
+            print('something went wrong! (1):')
+            done = False
+
+    if not done:
+        with codecs.open(nfo_path, 'w', 'utf-8') as file:
+            file.write(nfo_string)
+        return False
+
     print('done')
     main_tmdb_details = None
     sec_tmdb_details = None
