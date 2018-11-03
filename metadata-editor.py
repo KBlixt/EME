@@ -142,6 +142,7 @@ def handle_movie():
 
     if not nfo_string:
         print('something went wrong! (123)')
+        return False
 
     nfo = nfo_string.split('\n')
     print('working on: "' + nfo_path + '".')
