@@ -272,16 +272,17 @@ def handle_movie():
     with codecs.open(nfo_path, 'w', 'utf-8') as file:
         file.write(nfo)
     print('done')
+    main_tmdb_details = None
+    sec_tmdb_details = None
 
 
 if args.directory:
     movie_directory = args.directory
     handle_movie()
+
 else:
     for movie in os.listdir(args.library):
         movie_directory = os.path.join(args.library, movie)
         handle_movie()
-        main_tmdb_details = None
-        sec_tmdb_details = None
 
 sys.exit()
