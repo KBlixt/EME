@@ -174,14 +174,14 @@ def handle_movie():
                 main_tmdb_details = get_tmdb_details_data(main_language)
                 if not main_tmdb_details:
                     continue
-            if len(main_tmdb_details('overview')) > 30:
+            if len(main_tmdb_details['overview']) > 30:
                 modify_tag(nfo, 'plot', main_tmdb_details['overview'])
             else:
                 if not sec_tmdb_details:
                     sec_tmdb_details = get_tmdb_details_data(secondary_language)
                     if not sec_tmdb_details:
                         continue
-                if len(sec_tmdb_details('overview')) > 30:
+                if len(sec_tmdb_details['overview']) > 30:
                     modify_tag(nfo, 'plot', sec_tmdb_details['overview'])
                 else:
                     modify_tag(nfo, 'plot', main_tmdb_details['overview'])
