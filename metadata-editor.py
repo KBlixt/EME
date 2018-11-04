@@ -269,9 +269,11 @@ def handle_movie():
         for field in args.unlock.split(','):
             if field.lower() in locked_fields.lower():
                 locked_fields = locked_fields.replace('|' + field.lower().capitalize(), '').replace(field.lower().capitalize(), '')
+                break
         for line in nfo:
             if '<lockdata>' in line:
-                line.replace('true', 'false')
+                line = line.replace('true', 'false')
+                break
 
     count = 0
     for line in nfo:
