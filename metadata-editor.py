@@ -15,7 +15,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--directory", help="directory to edit metadata for")
 parser.add_argument("-l", "--library", help="library of directories to edit metadata for")
 parser.add_argument("-f", "--force", action="store_true", help="force scan the directories.")
-parser.add_argument("-u", "--unlock", help="list of locked fields to unlock, will also remove the overall lock.")
+parser.add_argument("--lock", help="list of locked fields to unlock, will also remove the overall lock.")
+parser.add_argument("--unlock", help="list of fields to lock, 'data' field will lock everything.")
 args = parser.parse_args()
 force = args.force
 
@@ -164,7 +165,7 @@ def handle_movie():
         if '<lockedfields>' in line:
             locked_fields = line.replace('<lockedfields>', '').replace('</lockedfields>', '').strip()
             break
-    if not args.unlock:
+    if not args.unlock and not args.lock:
         for field in fields_to_change:
 
             if field.strip() == 'summary':
@@ -265,15 +266,52 @@ def handle_movie():
                 modify_tag(nfo, 'lockdata', 'true')
                 if 'Title' not in locked_fields:
                     locked_fields += '|Title'
-    else:
+    elif args.unlock:
         for field in args.unlock.split(','):
+            if field == 'all':
+                locked_fields = ''
+                break
             if field.lower() in locked_fields.lower():
                 locked_fields = locked_fields.replace('|' + field.lower().capitalize(), '').replace(field.lower().capitalize(), '')
-                break
+                if field.lower() == 'officialrating':
+                    locked_fields = locked_fields.replace('|OfficialRating','').replace(
+                        'OfficialRating', '')
+                if field.lower() == 'productionlocations':
+                    locked_fields = locked_fields.replace('|ProductionLocations', '').replace(
+                        'ProductionLocations', '')
+        count = 0
         for line in nfo:
             if '<lockdata>' in line:
-                line = line.replace('true', 'false')
+                nfo[count] = line.replace('true', 'false')
                 break
+            count += 1
+
+    else:
+        for field in args.lock.split(','):
+            if not any(x.lower() == field.lower() for x in ['Title', 'Name', 'Overview',
+                                                            'Genres', 'OfficialRating',
+                                                            'Cast', 'ProductionLocations',
+                                                            'Studios', 'Tags', 'data', 'all']):
+                continue
+            if field.lower() == 'all':
+                locked_fields = 'Name|Overview|Genres|OfficialRating|Cast|ProductionLocations|Studios|Tags'
+                field = 'data'
+            if field.lower() == 'title':
+                field = 'name'
+            if field.lower() == 'officialrating':
+                field = 'OfficialRating'
+            if field.lower() == 'ProductionLocations':
+                field = 'ProductionLocations'
+            if field.lower() == 'data':
+                count = 0
+                for line in nfo:
+                    if '<lockdata>' in line:
+                        nfo[count] = line.replace('false', 'true')
+                        break
+                    count += 1
+                continue
+            if field.lower() not in locked_fields.lower():
+                locked_fields += '|' + field.lower().capitalize()
 
     count = 0
     for line in nfo:
