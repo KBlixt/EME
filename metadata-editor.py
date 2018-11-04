@@ -149,7 +149,6 @@ def handle_movie():
         return False
 
     nfo = nfo_string.split('\n')
-    print('working on: "' + nfo_path + '".')
 
     for line in nfo:
         if '<tmdbid>' in line:
@@ -292,11 +291,13 @@ def handle_movie():
 
 if args.directory:
     movie_directory = args.directory
+    print('working on: "' + movie_directory + '".')
     handle_movie()
 
 else:
     for movie in os.listdir(args.library):
         movie_directory = os.path.join(args.library, movie)
+        print('working on: "' + movie_directory + '".')
         handle_movie()
 
 sys.exit()
