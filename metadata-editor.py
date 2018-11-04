@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--directory", help="directory to edit metadata for")
 parser.add_argument("-l", "--library", help="library of directories to edit metadata for")
 parser.add_argument("-f", "--force", action="store_true", help="force scan the directories.")
+parser.add_argument("-u", "--unlock", help="list of locked fields to unlock, will also remove the overall lock.")
 args = parser.parse_args()
 force = args.force
 
@@ -163,107 +164,114 @@ def handle_movie():
         if '<lockedfields>' in line:
             locked_fields = line.replace('<lockedfields>', '').replace('</lockedfields>', '').strip()
             break
+    if not args.unlock:
+        for field in fields_to_change:
 
-    for field in fields_to_change:
-
-        if field.strip() == 'summary':
-            if not force:
-                if 'overview' in locked_fields.lower():
-                    continue
-            if not main_tmdb_details:
-                main_tmdb_details = get_tmdb_details_data(main_language)
+            if field.strip() == 'summary':
+                if not force:
+                    if 'overview' in locked_fields.lower():
+                        continue
                 if not main_tmdb_details:
-                    continue
-            if len(main_tmdb_details['overview']) > 30:
-                modify_tag(nfo, 'plot', main_tmdb_details['overview'])
-            else:
+                    main_tmdb_details = get_tmdb_details_data(main_language)
+                    if not main_tmdb_details:
+                        continue
+                if len(main_tmdb_details['overview']) > 30:
+                    modify_tag(nfo, 'plot', main_tmdb_details['overview'])
+                else:
+                    if not sec_tmdb_details:
+                        sec_tmdb_details = get_tmdb_details_data(secondary_language)
+                        if not sec_tmdb_details:
+                            continue
+                    if len(sec_tmdb_details['overview']) > 30:
+                        modify_tag(nfo, 'plot', sec_tmdb_details['overview'])
+                    else:
+                        continue
+
+                if 'Overview' not in locked_fields:
+                    locked_fields += '|Overview'
+
+            elif field.strip() == 'genres':
+                if not force:
+                    if 'genres' in locked_fields.lower():
+                        continue
+                count = 0
+                for line in nfo:
+                    if '<genre>' in line:
+                        for change_to, change_from_string in conf.items('GENRES'):
+                            change_from_list = change_from_string.split(',')
+                            for change_from in change_from_list:
+                                tmp = line.replace('<genre>', '').replace('</genre>', '').lower().strip()
+                                tmp2 = change_from.lower().strip()
+                                if tmp == tmp2:
+                                    nfo[count] = '  <genre>' + change_to.lower().title() + '</genre>'
+                    count += 1
+                if 'Genres' not in locked_fields:
+                    locked_fields += '|Genres'
+
+            elif field.strip() == 'content_rating':
+                if not force:
+                    if 'officialrating' in locked_fields.lower():
+                        continue
+                content_rating = get_imdb_content_rating()
+                found = False
+                for line in nfo:
+                    if '<mpaa>' in line:
+                        for change_to, change_from_string in conf.items('RATINGS'):
+                            change_from_list = change_from_string.split(',')
+                            for change_from in change_from_list:
+                                tmp = content_rating.lower().strip()
+                                tmp2 = change_from.lower().strip()
+                                if tmp == tmp2:
+                                    content_rating = change_to.lower().strip().upper()
+                                    found = True
+                                    break
+                if not found:
+                    content_rating = '???'
+
+                modify_tag(nfo, 'mpaa', content_rating)
+                if 'OfficialRating' not in locked_fields:
+                    locked_fields += '|OfficialRating'
+
+            elif field.strip() == 'original_title_mod':
+                if not force:
+                    if 'title' in locked_fields.lower():
+                        continue
+                if not main_tmdb_details:
+                    main_tmdb_details = get_tmdb_details_data(main_language)
+                    if not main_tmdb_details:
+                        continue
                 if not sec_tmdb_details:
                     sec_tmdb_details = get_tmdb_details_data(secondary_language)
                     if not sec_tmdb_details:
                         continue
-                if len(sec_tmdb_details['overview']) > 30:
-                    modify_tag(nfo, 'plot', sec_tmdb_details['overview'])
+
+                if main_tmdb_details['title'] == main_tmdb_details['original_title']:
+                    new_title = main_tmdb_details['title']
+                    new_otitle = main_tmdb_details['title']
+                    if main_tmdb_details['title'] != sec_tmdb_details['title']:
+                        new_otitle += ' :: ' + sec_tmdb_details['title']
+                elif sec_tmdb_details['title'] == sec_tmdb_details['original_title']:
+                    new_title = sec_tmdb_details['title']
+                    new_otitle = sec_tmdb_details['title']
+                    if main_tmdb_details['title'] != sec_tmdb_details['title']:
+                        new_otitle += ' :: ' + main_tmdb_details['title']
                 else:
-                    modify_tag(nfo, 'plot', main_tmdb_details['overview'])
-
-            if 'Overview' not in locked_fields:
-                locked_fields += '|Overview'
-
-        elif field.strip() == 'genres':
-            if not force:
-                if 'genres' in locked_fields.lower():
-                    continue
-            count = 0
-            for line in nfo:
-                if '<genre>' in line:
-                    for change_to, change_from_string in conf.items('GENRES'):
-                        change_from_list = change_from_string.split(',')
-                        for change_from in change_from_list:
-                            tmp = line.replace('<genre>', '').replace('</genre>', '').lower().strip()
-                            tmp2 = change_from.lower().strip()
-                            if tmp == tmp2:
-                                nfo[count] = '  <genre>' + change_to.lower().title() + '</genre>'
-                count += 1
-            if 'Genres' not in locked_fields:
-                locked_fields += '|Genres'
-
-        elif field.strip() == 'content_rating':
-            if not force:
-                if 'officialrating' in locked_fields.lower():
-                    continue
-            content_rating = get_imdb_content_rating()
-            found = False
-            for line in nfo:
-                if '<mpaa>' in line:
-                    for change_to, change_from_string in conf.items('RATINGS'):
-                        change_from_list = change_from_string.split(',')
-                        for change_from in change_from_list:
-                            tmp = content_rating.lower().strip()
-                            tmp2 = change_from.lower().strip()
-                            if tmp == tmp2:
-                                content_rating = change_to.lower().strip().upper()
-                                found = True
-                                break
-            if not found:
-                content_rating = '???'
-
-            modify_tag(nfo, 'mpaa', content_rating)
-            if 'OfficialRating' not in locked_fields:
-                locked_fields += '|OfficialRating'
-
-        elif field.strip() == 'original_title_mod':
-            if not force:
-                if 'title' in locked_fields.lower():
-                    continue
-            if not main_tmdb_details:
-                main_tmdb_details = get_tmdb_details_data(main_language)
-                if not main_tmdb_details:
-                    continue
-            if not sec_tmdb_details:
-                sec_tmdb_details = get_tmdb_details_data(secondary_language)
-                if not sec_tmdb_details:
-                    continue
-
-            if main_tmdb_details['title'] == main_tmdb_details['original_title']:
-                new_title = main_tmdb_details['title']
-                new_otitle = main_tmdb_details['title']
-                if main_tmdb_details['title'] != sec_tmdb_details['title']:
-                    new_otitle += ' :: ' + sec_tmdb_details['title']
-            elif sec_tmdb_details['title'] == sec_tmdb_details['original_title']:
-                new_title = sec_tmdb_details['title']
-                new_otitle = sec_tmdb_details['title']
-                if main_tmdb_details['title'] != sec_tmdb_details['title']:
-                    new_otitle += ' :: ' + main_tmdb_details['title']
-            else:
-                new_title = sec_tmdb_details['title']
-                new_otitle = sec_tmdb_details['original_title'] + ' :: ' + sec_tmdb_details['title']
-                if main_tmdb_details['title'] != sec_tmdb_details['title']:
-                    new_otitle += ' :: ' + main_tmdb_details['title']
-            modify_tag(nfo, 'originaltitle', new_otitle)
-            modify_tag(nfo, 'title', new_title)
-            modify_tag(nfo, 'lockdata', 'true')
-            if 'Title' not in locked_fields:
-                locked_fields += '|Title'
+                    new_title = sec_tmdb_details['title']
+                    new_otitle = sec_tmdb_details['original_title'] + ' :: ' + sec_tmdb_details['title']
+                    if main_tmdb_details['title'] != sec_tmdb_details['title']:
+                        new_otitle += ' :: ' + main_tmdb_details['title']
+                modify_tag(nfo, 'originaltitle', new_otitle)
+                modify_tag(nfo, 'title', new_title)
+                modify_tag(nfo, 'lockdata', 'true')
+                if 'Title' not in locked_fields:
+                    locked_fields += '|Title'
+    else:
+        for field in args.unlock.split(','):
+            if field.lower() in locked_fields.lower():
+                locked_fields = locked_fields.replace('|' + field.lower().capitalize(), '').replace(field.lower().capitalize(), '')
+        for line in nfo:
+            if '<lockdata>' in line:
+                line.replace('false', 'true')
 
     count = 0
     for line in nfo:
