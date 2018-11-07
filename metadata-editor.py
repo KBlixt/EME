@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--directory", help="directory to edit metadata for")
 parser.add_argument("-l", "--library", help="library of directories to edit metadata for")
 parser.add_argument("-f", "--force", action="store_true", help="force scan the directories.")
+parser.add_argument("-o", "--only_lock", action="store_true", help="Only use the lock/unlock functionality.")
 parser.add_argument("--lock", help="list of locked fields to unlock, will also remove the overall lock.")
 parser.add_argument("--unlock", help="list of fields to lock, 'data' field will lock everything.")
 args = parser.parse_args()
@@ -165,7 +166,7 @@ def handle_movie():
         if '<lockedfields>' in line:
             locked_fields = line.replace('<lockedfields>', '').replace('</lockedfields>', '').strip()
             break
-    if not args.unlock and not args.lock:
+    if not args.only_lock:
         for field in fields_to_change:
 
             if field.strip() == 'summary':
@@ -266,7 +267,37 @@ def handle_movie():
                 modify_tag(nfo, 'lockdata', 'true')
                 if 'Title' not in locked_fields:
                     locked_fields += '|Title'
-    elif args.unlock:
+
+    if args.lock:
+        for field in args.lock.split(','):
+            if not any(x.lower() == field.lower() for x in ['Title', 'Name', 'Overview',
+                                                            'Genres', 'OfficialRating',
+                                                            'Cast', 'ProductionLocations',
+                                                            'Studios', 'Tags', 'data', 'all', 'summary']):
+                continue
+            if field.lower() == 'all':
+                locked_fields = 'Name|Overview|Genres|OfficialRating|Cast|ProductionLocations|Studios|Tags'
+                field = 'data'
+            if field.lower() == 'title':
+                field = 'Name'
+            if field.lower() == 'summary':
+                field = 'Overview'
+            if field.lower() == 'officialrating':
+                field = 'OfficialRating'
+            if field.lower() == 'ProductionLocations':
+                field = 'ProductionLocations'
+            if field.lower() == 'data':
+                count = 0
+                for line in nfo:
+                    if '<lockdata>' in line:
+                        nfo[count] = line.replace('false', 'true')
+                        break
+                    count += 1
+                continue
+            if field.lower() not in locked_fields.lower():
+                locked_fields += '|' + field.lower().capitalize()
+
+    if args.unlock:
         for field in args.unlock.split(','):
             if field == 'all':
                 locked_fields = ''
@@ -286,32 +317,6 @@ def handle_movie():
                 break
             count += 1
 
-    else:
-        for field in args.lock.split(','):
-            if not any(x.lower() == field.lower() for x in ['Title', 'Name', 'Overview',
-                                                            'Genres', 'OfficialRating',
-                                                            'Cast', 'ProductionLocations',
-                                                            'Studios', 'Tags', 'data', 'all']):
-                continue
-            if field.lower() == 'all':
-                locked_fields = 'Name|Overview|Genres|OfficialRating|Cast|ProductionLocations|Studios|Tags'
-                field = 'data'
-            if field.lower() == 'title':
-                field = 'name'
-            if field.lower() == 'officialrating':
-                field = 'OfficialRating'
-            if field.lower() == 'ProductionLocations':
-                field = 'ProductionLocations'
-            if field.lower() == 'data':
-                count = 0
-                for line in nfo:
-                    if '<lockdata>' in line:
-                        nfo[count] = line.replace('false', 'true')
-                        break
-                    count += 1
-                continue
-            if field.lower() not in locked_fields.lower():
-                locked_fields += '|' + field.lower().capitalize()
 
     count = 0
     for line in nfo:
@@ -330,6 +335,12 @@ def handle_movie():
             count += 1
 
     nfo = '\n'.join(nfo)
+
+    if nfo == nfo_string:
+        print('nothing changed.')
+        print('done')
+        return True
+
     done = True
     with codecs.open(nfo_path, 'w', 'utf-8') as file:
         try:
